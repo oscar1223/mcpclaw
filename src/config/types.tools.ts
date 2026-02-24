@@ -417,6 +417,8 @@ export type MemorySearchConfig = {
   };
 };
 
+export type { McpToolServerConfig } from "../agents/mcp/types.js";
+
 export type ToolsConfig = {
   /** Base tool profile applied before allow/deny lists. */
   profile?: ToolProfileId;
@@ -589,4 +591,6 @@ export type ToolsConfig = {
       deny?: string[];
     };
   };
+  /** MCP tool server connections. */
+  toolServers?: import("../agents/mcp/types.js").McpToolServerConfig[];
 };

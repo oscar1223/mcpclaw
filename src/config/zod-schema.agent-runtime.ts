@@ -742,6 +742,39 @@ export const ToolsSchema = z
       })
       .strict()
       .optional(),
+    toolServers: z
+      .array(
+        z
+          .discriminatedUnion("type", [
+            z
+              .object({
+                type: z.literal("stdio"),
+                name: z.string().min(1),
+                description: z.string().optional(),
+                enabled: z.boolean().optional(),
+                tools: z.array(z.string()).optional(),
+                timeoutMs: z.number().int().positive().optional(),
+                command: z.string().min(1),
+                args: z.array(z.string()).optional(),
+                env: z.record(z.string(), z.string()).optional(),
+                cwd: z.string().optional(),
+              })
+              .strict(),
+            z
+              .object({
+                type: z.literal("sse"),
+                name: z.string().min(1),
+                description: z.string().optional(),
+                enabled: z.boolean().optional(),
+                tools: z.array(z.string()).optional(),
+                timeoutMs: z.number().int().positive().optional(),
+                url: z.string().url(),
+                headers: z.record(z.string(), z.string()).optional(),
+              })
+              .strict(),
+          ])
+      )
+      .optional(),
   })
   .strict()
   .superRefine((value, ctx) => {

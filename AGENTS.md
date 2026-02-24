@@ -18,6 +18,24 @@
   - Core channel code: `src/telegram`, `src/discord`, `src/slack`, `src/signal`, `src/imessage`, `src/web` (WhatsApp web), `src/channels`, `src/routing`
   - Extensions (channel plugins): `extensions/*` (e.g. `extensions/msteams`, `extensions/matrix`, `extensions/zalo`, `extensions/zalouser`, `extensions/voice-call`)
 - When adding channels/extensions/apps/docs, update `.github/labeler.yml` and create matching GitHub labels (use existing channel/extension label colors).
+- Skill packages: `packages/*` — 50+ skill workspace packages (`1password`, `github`, `canvas`, `spotify-player`, etc.), each a self-contained npm package published independently to `@openclaw/<name>`.
+- Web control panel: `ui/` — Svelte/TypeScript control panel built with Vite; served by the gateway's HTTP endpoints. Dev: `pnpm ui:dev`; build: `pnpm ui:build`.
+- Canvas host (`src/canvas-host/`): Serves the A2UI browser-automation UI bundle for visual agents. Bundle pre-built via `scripts/bundle-a2ui.sh`; hash at `src/canvas-host/a2ui/.bundle.hash` is auto-generated — only regenerate intentionally via `pnpm canvas:a2ui:bundle`.
+- Agent Client Protocol bridge: `src/acp/` — translates gateway calls to/from ACP protocol for external (non-embedded) agent systems using `@agentclientprotocol/sdk`.
+
+## Architecture Overview
+
+OpenClaw is a multi-channel AI agent gateway with these layers:
+
+1. **Ingress** (`src/discord`, `src/telegram`, `src/slack`, `src/signal`, `src/imessage`, etc.): Messages arrive from messaging platforms via webhooks or polling.
+2. **Routing** (`src/routing/`): `resolve-route.ts` determines which agent handles each message via peer, guild+role, guild, account, or channel-default bindings. Session keys (`session-key.ts`) encode agent+channel+account+peer into persistent identifiers stored under `~/.openclaw/sessions/`.
+3. **Agent** (`src/agents/`): Executes LLM calls, tool invocations, skills, memory operations, and subagent coordination.
+4. **Gateway** (`src/gateway/`): Central orchestrator. Manages channels, WebSocket connections, session persistence, cron, health monitoring, config reloads, plugin lifecycle, and HTTP endpoints. The gateway is the runtime source of truth; the CLI connects to it over WebSocket.
+5. **Plugin** (`src/plugins/`): Hook system fires at key lifecycle points (before/after LLM call, inbound/outbound message, session start/end, gateway startup/shutdown). Plugins can also register HTTP routes and channel adapters via `src/plugin-sdk/`.
+6. **CLI** (`src/cli/`, `src/commands/`): User-facing tooling for setup, status, and control.
+7. **ACP** (`src/acp/`): Agent Client Protocol bridge — translates gateway calls to/from ACP for external agent systems.
+
+Multiple agents can run concurrently, each with its own session and routing bindings. The macOS menubar app wraps the gateway process; on other platforms the gateway runs standalone.
 
 ## Docs Linking (Mintlify)
 
@@ -67,6 +85,9 @@
 - Format check: `pnpm format` (oxfmt --check)
 - Format fix: `pnpm format:fix` (oxfmt --write)
 - Tests: `pnpm test` (vitest); coverage: `pnpm test:coverage`
+- Fast unit-only run (no gateway/e2e): `pnpm test:fast`
+- Dead code scan: `pnpm deadcode:report` (knip + ts-prune + ts-unused-exports)
+- LOC guard: `pnpm check:loc` (flags files over 500 LOC)
 
 ## Coding Style & Naming Conventions
 
@@ -91,6 +112,8 @@
 
 - Framework: Vitest with V8 coverage thresholds (70% lines/branches/functions/statements).
 - Naming: match source names with `*.test.ts`; e2e in `*.e2e.test.ts`.
+- Run a single test file: `vitest run --config vitest.unit.config.ts src/path/to/file.test.ts`
+- Vitest configs: `vitest.unit.config.ts` (unit only), `vitest.gateway.config.ts` (gateway integration), `vitest.e2e.config.ts` (e2e in `test/`), `vitest.live.config.ts` (real API keys), `vitest.extensions.config.ts` (extension workspace).
 - Run `pnpm test` (or `pnpm test:coverage`) before pushing when you touch logic.
 - Do not set test workers above 16; tried already.
 - If local Vitest runs cause memory pressure (common on non-Mac-Studio hosts), use `OPENCLAW_TEST_PROFILE=low OPENCLAW_TEST_SERIAL_GATEWAY=1 pnpm test` for land/gate runs.

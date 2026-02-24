@@ -1,4 +1,5 @@
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
+import { disposeMcpRegistry, initMcpRegistry } from "../agents/mcp/registry.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import {
   getModelRefStatus,
@@ -163,11 +164,20 @@ export async function startGatewaySidecars(params: {
     params.log.warn(`qmd memory startup initialization failed: ${String(err)}`);
   });
 
+  // Connect configured MCP tool servers (failures are non-fatal).
+  await initMcpRegistry(params.cfg, params.log).catch((err) => {
+    params.log.warn(`MCP servers init failed: ${String(err)}`);
+  });
+
   if (shouldWakeFromRestartSentinel()) {
     setTimeout(() => {
       void scheduleRestartSentinelWake({ deps: params.deps });
     }, 750);
   }
 
-  return { browserControl, pluginServices };
+  return {
+    browserControl,
+    pluginServices,
+    mcpHandle: { stop: disposeMcpRegistry },
+  };
 }

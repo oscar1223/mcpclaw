@@ -38,6 +38,15 @@ const loadConfig = async (): Promise<OpenClawConfig> => {
 // and set the flag accordingly.
 const entries: SubCliEntry[] = [
   {
+    name: "mcp",
+    description: "Manage MCP tool server connections",
+    hasSubcommands: true,
+    register: async (program) => {
+      const mod = await import("../mcp-cli.js");
+      mod.registerMcpCli(program);
+    },
+  },
+  {
     name: "acp",
     description: "Agent Control Protocol tools",
     hasSubcommands: true,
